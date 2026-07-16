@@ -1,0 +1,35 @@
+name: Weekly database backup
+
+# Runs every Sunday at 03:00 UTC, and can also be run manually.
+on:
+  schedule:
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Record date
+        id: ts
+        run: echo "date=$(date +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Dump schema
+        run: supabase db dump --db-url "${{ secrets.SUPABASE_DB_URL }}" -f schema.sql
+
+      - name: Dump data
+        run: supabase db dump --db-url "${{ secrets.SUPABASE_DB_URL }}" --data-only -f data.sql
+
+      - name: Save backup as downloadable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hope365-backup-${{ steps.ts.outputs.date }}
+          path: |
+            schema.sql
+            data.sql
+          retention-days: 90
